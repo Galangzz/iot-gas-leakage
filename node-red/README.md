@@ -69,9 +69,21 @@ contextStorage: {
 
 Restart Node-RED setelah mengubah `settings.js`.
 
-## 3. Login editor (adminAuth)
+## 3. Autentikasi editor dan dashboard
 
-Editor dan Admin API dilindungi password; dashboard `/ui` tetap terbuka.
+Ada dua lapis perlindungan, keduanya dikonfigurasi di `~/.node-red/settings.js`:
+
+| Lapisan | Melindungi | Mekanisme |
+|---|---|---|
+| `adminAuth` | editor, Admin API (`/flows`, `/settings`, `/auth/token`) | sesi login + token |
+| `dashboard.middleware` | `/ui`, aset statis, `/ui/_setup`, `/ui/_debug/*` | HTTP Basic + cookie |
+| `dashboard.ioMiddleware` | `/ui/socket.io` (kanal realtime) | Basic/cookie yang sama |
+
+Tanpa `dashboard.middleware`, `adminAuth` **tidak** melindungi `/ui` maupun
+socket.io-nya, sehingga siapa pun di jaringan yang sama bisa membuka dashboard
+dan menekan **Simpan Threshold**.
+
+### 3.1 Editor dan Admin API (`adminAuth`)
 
 Aktifkan di `~/.node-red/settings.js`:
 
@@ -86,34 +98,132 @@ adminAuth: {
 },
 ```
 
-Buat hash (tidak pernah menulis password polos ke file):
+Buat hash (password polos tidak pernah ditulis ke file):
 
 ```bash
 node-red admin hash-pw
 ```
 
-Ganti password kapan saja dengan mengulang perintah di atas lalu menempel hash
-baru dan me-restart Node-RED. Di Node-RED 5.0.10 Admin API **tidak** menerima
-HTTP Basic (`curl -u admin:pass` → 401); ambil token dulu seperti pada bagian 4.
+Ganti password kapan saja dengan mengulang perintah di atas, menempel hash
+baru, lalu me-restart Node-RED. Di Node-RED 5.0.10 Admin API **tidak**
+menerima HTTP Basic (`curl -u admin:pass` → 401); ambil token lewat
+`POST /auth/token` seperti pada bagian 4.
 
-Catatan: `adminAuth` hanya melindungi editor dan Admin API. Halaman `/ui`
-beserta socket.io-nya tetap dapat dibuka siapa pun yang menjangkau port 1880,
-sehingga tombol **Simpan Threshold** juga terbuka. Bila dashboard perlu
-dilindungi, tambahkan middleware di `settings.js`:
+### 3.2 Dashboard `/ui` (`middleware` + `ioMiddleware`)
+
+Tambahkan helper berikut di bagian atas `settings.js`, sebelum
+`module.exports`:
+
+```js
+const crypto = require("crypto")
+const DASH_USER = "admin"
+const DASH_SHA256 = "<sha256 dari user:password>"
+const DASH_COOKIE = "gas_dash_auth"
+const DASH_COOKIE_TOKEN = crypto.createHash("sha256")
+    .update("gas-dash-cookie:" + DASH_SHA256).digest("hex")
+
+function dashEquals(a, b) {
+    const ba = Buffer.from(String(a))
+    const bb = Buffer.from(String(b))
+    return ba.length === bb.length && crypto.timingSafeEqual(ba, bb)
+}
+
+function dashPasswordOk(user, pass) {
+    if (!DASH_SHA256) return false
+    const hash = crypto.createHash("sha256").update(user + ":" + pass).digest("hex")
+    return dashEquals(user, DASH_USER) && dashEquals(hash, DASH_SHA256)
+}
+
+function dashAuthorized(headers) {
+    const auth = headers.authorization || ""
+    if (auth.indexOf("Basic ") === 0) {
+        const raw = Buffer.from(auth.slice(6), "base64").toString()
+        const sep = raw.indexOf(":")
+        if (sep > 0 && dashPasswordOk(raw.slice(0, sep), raw.slice(sep + 1))) {
+            return true
+        }
+    }
+    const cookie = String(headers.cookie || "")
+    return cookie.split(";").map(part => part.trim())
+        .indexOf(DASH_COOKIE + "=" + DASH_COOKIE_TOKEN) !== -1
+}
+
+function dashMiddleware(req, res, next) {
+    if (dashAuthorized(req.headers)) {
+        res.cookie(DASH_COOKIE, DASH_COOKIE_TOKEN, {
+            httpOnly: true,
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        })
+        return next()
+    }
+    res.set("WWW-Authenticate", 'Basic realm="Gas Dashboard", charset="UTF-8"')
+    return res.status(401).send("Unauthorized")
+}
+
+function dashIoMiddleware(socket, next) {
+    if (dashAuthorized(socket.request.headers)) return next()
+    return next(new Error("unauthorized"))
+}
+```
+
+lalu daftarkan di objek `module.exports`:
 
 ```js
 dashboard: {
-    middleware: function (req, res, next) {
-        const auth = req.headers.authorization || ""
-        const [scheme, value] = auth.split(" ")
-        const [user, pass] = Buffer.from(value || "", "base64").toString().split(":")
-        if (scheme === "Basic" && user === "admin" && pass === process.env.DASHBOARD_PASS) {
-            return next()
-        }
-        res.set("WWW-Authenticate", 'Basic realm="Gas Dashboard"')
-        return res.status(401).send("Unauthorized")
-    }
+    middleware: dashMiddleware,
+    ioMiddleware: dashIoMiddleware
 },
+```
+
+Hitung hash dashboard (berbeda dari hash bcrypt `adminAuth`):
+
+```bash
+printf '%s' 'admin:password-dashboard' | sha256sum
+```
+
+Tempel 64 karakter hex hasilnya ke `DASH_SHA256`, lalu restart Node-RED.
+Saat mengganti password, **dua** nilai harus diperbarui: hash bcrypt
+(`adminAuth`) dan `DASH_SHA256`.
+
+Perilaku setelah aktif:
+
+- Request tanpa kredensial ke `/ui`, `/ui/_setup`, dan `/ui/_debug/*` dibalas
+  `401` + `WWW-Authenticate`, sehingga browser menampilkan dialog login.
+- Login sukses memasang cookie `gas_dash_auth` (httpOnly, SameSite=Lax,
+  berlaku 7 hari), jadi reload tidak meminta password lagi.
+- Handshake socket.io tetap membalas `200`, tetapi frame `CONNECT` ditolak
+  dengan `44{"message":"unauthorized"}` bila tidak ada kredensial. Dengan
+  kredensial benar server mengirim `40{"sid":...}` diikuti `ui-config`.
+
+Verifikasi:
+
+```bash
+curl -s -o /dev/null -w 'tanpa kredensial: %{http_code}\n' \
+  http://127.0.0.1:1880/ui/monitor                 # 401
+curl -s -o /dev/null -w 'dengan kredensial: %{http_code}\n' \
+  -u 'admin:password-dashboard' \
+  http://127.0.0.1:1880/ui/monitor                 # 200
+```
+
+Catatan keamanan: HTTP Basic mengirim `user:password` sebagai base64, bukan
+enkripsi. Di LAN ini masih dapat diterima; untuk akses dari internet wajib
+HTTPS (bagian 9).
+
+### 3.3 Akses dari perangkat lain
+
+Gunakan IP LAN mesin Node-RED, bukan `localhost`:
+
+```text
+http://<IP-LAN-host>:1880/ui/monitor
+```
+
+`localhost` di laptop lain menunjuk ke laptop itu sendiri. Pastikan port 1880
+dibuka di firewall host:
+
+```bash
+sudo firewall-cmd --permanent --add-port=1880/tcp
+sudo firewall-cmd --reload
 ```
 
 ## 4. Import flow
@@ -247,10 +357,10 @@ alat siap:
   keyfile  /etc/mosquitto/certs/server.key
   ```
 
-- `adminAuth` sudah aktif untuk editor dan Admin API, tetapi halaman `/ui`
-  masih terbuka. Sebelum dibuka publik, tambahkan middleware dashboard
-  (bagian 3) dan HTTPS (reverse proxy atau opsi `https` di `settings.js`).
-  Jangan ekspos port 1880 langsung.
+- `adminAuth` dan middleware dashboard sudah aktif (bagian 3), tetapi masih
+  memakai HTTP polos sehingga kredensial Basic bisa disadap di jaringan yang
+  sama. Sebelum dibuka publik, pasang HTTPS (reverse proxy atau opsi `https`
+  di `settings.js`) dan jangan ekspos port 1880 langsung.
 - Sesuaikan node broker di flow ke alamat broker baru, atau pertahankan broker
   dan Node-RED di mesin yang sama.
 - Pindahkan `flows.json` beserta `~/.node-red/context/` bila riwayat alarm
@@ -270,6 +380,14 @@ alat siap:
   sambungkan alat.
 - `401 Unauthorized` saat `curl` ke Admin API: `adminAuth` aktif. Ambil token
   lewat `/auth/token` (bagian 4); HTTP Basic tidak didukung di Node-RED 5.0.10.
+- `/ui` menampilkan dialog login atau halaman `Unauthorized`: memang auth
+  dashboard aktif (bagian 3). Masuk dengan user `admin` dan password dashboard.
+- Editor menerima password tetapi dashboard menolak: `DASH_SHA256` adalah
+  sha256 dari `user:password`, nilai yang berbeda dari hash bcrypt
+  `adminAuth`; perbarui keduanya saat mengganti password.
+- Dialog login muncul terus padahal password benar: cookie diblokir (mode
+  privat atau cookie dimatikan). Jangan mengandalkan `http://user:pass@host`
+  karena browser modern membatasi kredensial di URL.
 - Lupa password editor: buat hash baru dengan `node-red admin hash-pw`, ganti
   `password` di blok `adminAuth`, restart Node-RED. Backup konfigurasi lama ada
   di `~/.node-red/settings.js.bak`.
