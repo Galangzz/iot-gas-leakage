@@ -128,7 +128,9 @@ yang tidak memenuhi `0 <= off < on <= 4095` dan mengirim ulang state terakhir.
   ditampilkan. Satu baris berisi mulai, selesai, durasi, puncak, dan
   keterangan (`normal`, `alat restart`, `koneksi terputus`). Riwayat bertahan
   setelah Node-RED restart; saat startup flow mengirim ulang events yang
-  tersimpan ke tabel.
+  tersimpan ke tabel. Bila alarm berlanjut setelah koneksi terputus, baris
+  lanjutannya menampilkan `tidak diketahui` di kolom mulai karena waktu mulai
+  sebenarnya tidak pernah teramati.
 
 ## 6. Firmware
 
