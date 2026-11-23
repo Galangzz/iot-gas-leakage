@@ -287,7 +287,10 @@ yang tidak memenuhi `0 <= off < on <= 4095` dan mengirim ulang state terakhir.
 ## 6. Perilaku dashboard
 
 - Kartu status: `WARMUP` kuning, `SAFE` hijau, `ALARM` merah.
-- Gauge: rata-rata ADC 0–4095.
+- Gauge: rata-rata ADC 0–4095. Warna segmen mengikuti threshold yang sudah
+  dikonfirmasi alat: hijau di bawah `off`, kuning antara `off` dan `on`, merah
+  di atas `on`. Segmen dikirim lewat `msg.ui_update.segments` hanya ketika
+  threshold berubah, sehingga batas kuning/merah ikut bergerak.
 - Grafik: nilai rata-rata, jendela 15 menit, maksimum 900 titik, sumbu Y tetap
   0–4095 agar noise normal tidak tampak seperti lonjakan besar.
 - Threshold: dua angka (`on` dan `off`) + tombol simpan. State dari alat

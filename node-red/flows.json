@@ -243,11 +243,11 @@
         "id": "gas-validasi",
         "type": "function",
         "name": "validasi data",
-        "func": "const data = msg.payload\nconst statuses = ['WARMUP', 'SAFE', 'ALARM']\n\nif (!data || typeof data.avg !== 'number' || !statuses.includes(data.status)) {\n    return null\n}\n\nreturn [[msg], [msg], [msg], [msg], [msg]]",
+        "func": "const data = msg.payload\nconst statuses = ['WARMUP', 'SAFE', 'ALARM']\n\nif (!data || typeof data.avg !== 'number' || !statuses.includes(data.status)) {\n    return null\n}\n\nlet gauge = msg\nconst on = flow.get('stateOn')\nconst off = flow.get('stateOff')\n\nif (Number.isInteger(on) && Number.isInteger(off) && on > off) {\n    const key = on + ':' + off\n    if (flow.get('segmentsKey') !== key) {\n        flow.set('segmentsKey', key)\n        gauge = {\n            ...msg,\n            ui_update: {\n                segments: [\n                    { color: '#5CD65C', from: 0 },\n                    { color: '#FFC800', from: off },\n                    { color: '#EA5353', from: on }\n                ]\n            }\n        }\n    }\n}\n\nreturn [[gauge], [msg], [msg], [msg], [msg]]",
         "outputs": 5,
         "timeout": 0,
         "noerr": 0,
-        "initialize": "",
+        "initialize": "flow.set('segmentsKey', null)",
         "finalize": "",
         "libs": [],
         "x": 540,
@@ -389,7 +389,7 @@
             },
             {
                 "color": "#FFC800",
-                "from": 2500
+                "from": 3300
             },
             {
                 "color": "#EA5353",
@@ -746,7 +746,7 @@
         "type": "function",
         "z": "gas-tab-monitor",
         "name": "sinkron state",
-        "func": "const doc = msg.payload\n\nif (!doc || typeof doc.on !== 'number' || typeof doc.off !== 'number') {\n    return null\n}\n\nflow.set('thresholdSeen', true)\nflow.set('inputOn', doc.on)\nflow.set('inputOff', doc.off)\n\nreturn [\n    { payload: doc.on },\n    { payload: doc.off },\n    { payload: `Threshold aktif: on=${doc.on}, off=${doc.off}` }\n]",
+        "func": "const doc = msg.payload\n\nif (!doc || typeof doc.on !== 'number' || typeof doc.off !== 'number') {\n    return null\n}\n\nflow.set('thresholdSeen', true)\nflow.set('inputOn', doc.on)\nflow.set('inputOff', doc.off)\nflow.set('stateOn', doc.on)\nflow.set('stateOff', doc.off)\n\nreturn [\n    { payload: doc.on },\n    { payload: doc.off },\n    { payload: `Threshold aktif: on=${doc.on}, off=${doc.off}` }\n]",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
@@ -797,7 +797,7 @@
         "type": "function",
         "z": "gas-tab-monitor",
         "name": "fallback threshold",
-        "func": "if (flow.get('thresholdSeen')) {\n    return null\n}\n\nflow.set('inputOn', 3350)\nflow.set('inputOff', 3300)\n\nreturn [\n    { payload: 3350 },\n    { payload: 3300 },\n    { payload: 'Belum tersinkron dengan alat' }\n]",
+        "func": "if (flow.get('thresholdSeen')) {\n    return null\n}\n\nflow.set('inputOn', 3350)\nflow.set('inputOff', 3300)\nflow.set('stateOn', 3350)\nflow.set('stateOff', 3300)\n\nreturn [\n    { payload: 3350 },\n    { payload: 3300 },\n    { payload: 'Belum tersinkron dengan alat' }\n]",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
