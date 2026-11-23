@@ -69,21 +69,80 @@ contextStorage: {
 
 Restart Node-RED setelah mengubah `settings.js`.
 
-## 3. Import flow
+## 3. Login editor (adminAuth)
+
+Editor dan Admin API dilindungi password; dashboard `/ui` tetap terbuka.
+
+Aktifkan di `~/.node-red/settings.js`:
+
+```js
+adminAuth: {
+    type: "credentials",
+    users: [{
+        username: "admin",
+        password: "<hash bcrypt>",
+        permissions: "*"
+    }]
+},
+```
+
+Buat hash (tidak pernah menulis password polos ke file):
+
+```bash
+node-red admin hash-pw
+```
+
+Ganti password kapan saja dengan mengulang perintah di atas lalu menempel hash
+baru dan me-restart Node-RED. Di Node-RED 5.0.10 Admin API **tidak** menerima
+HTTP Basic (`curl -u admin:pass` → 401); ambil token dulu seperti pada bagian 4.
+
+Catatan: `adminAuth` hanya melindungi editor dan Admin API. Halaman `/ui`
+beserta socket.io-nya tetap dapat dibuka siapa pun yang menjangkau port 1880,
+sehingga tombol **Simpan Threshold** juga terbuka. Bila dashboard perlu
+dilindungi, tambahkan middleware di `settings.js`:
+
+```js
+dashboard: {
+    middleware: function (req, res, next) {
+        const auth = req.headers.authorization || ""
+        const [scheme, value] = auth.split(" ")
+        const [user, pass] = Buffer.from(value || "", "base64").toString().split(":")
+        if (scheme === "Basic" && user === "admin" && pass === process.env.DASHBOARD_PASS) {
+            return next()
+        }
+        res.set("WWW-Authenticate", 'Basic realm="Gas Dashboard"')
+        return res.status(401).send("Unauthorized")
+    }
+},
+```
+
+## 4. Import flow
 
 Flow ada di `node-red/flows.json`.
 
-- Lewat editor: buka `http://localhost:1880`, menu **Import**, pilih
-  `node-red/flows.json`, lalu **Deploy**.
-- Atau lewat Admin API:
+- Lewat editor: buka `http://localhost:1880`, login sebagai `admin`, menu
+  **Import**, pilih `node-red/flows.json`, lalu **Deploy**.
+- Atau lewat Admin API (butuh token bila `adminAuth` aktif):
 
   ```bash
+  TOKEN=$(curl -s -X POST http://localhost:1880/auth/token \
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    -d 'client_id=node-red-admin' -d 'grant_type=password' -d 'scope=*' \
+    -d 'username=admin' --data-urlencode "password=$DASHBOARD_PASS" \
+    | python3 -c 'import json,sys;print(json.load(sys.stdin)["access_token"])')
+
   python3 -c 'import json;json.dump({"flows":json.load(open("node-red/flows.json"))},open("/tmp/flows-body.json","w"))'
+
   curl -X POST http://localhost:1880/flows \
+    -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' \
     -H 'Node-RED-API-Version: v2' \
     --data-binary @/tmp/flows-body.json
   ```
+
+  Body harus berupa objek `{"flows":[...]}`, bukan array polos; array polos
+  ditolak dengan error `Cannot read properties of undefined (reading
+  'forEach')`.
 
 Setelah deploy:
 
@@ -103,7 +162,7 @@ git add node-red/flows.json
 git commit -m "chore: perbarui flow dashboard"
 ```
 
-## 4. Topik MQTT
+## 5. Topik MQTT
 
 | Topik | Arah | Retained | Isi |
 |---|---|---|---|
@@ -115,7 +174,7 @@ git commit -m "chore: perbarui flow dashboard"
 `status` hanya `WARMUP`, `SAFE`, atau `ALARM`. Firmware mengabaikan threshold
 yang tidak memenuhi `0 <= off < on <= 4095` dan mengirim ulang state terakhir.
 
-## 5. Perilaku dashboard
+## 6. Perilaku dashboard
 
 - Kartu status: `WARMUP` kuning, `SAFE` hijau, `ALARM` merah.
 - Gauge: rata-rata ADC 0–4095.
@@ -132,7 +191,7 @@ yang tidak memenuhi `0 <= off < on <= 4095` dan mengirim ulang state terakhir.
   lanjutannya menampilkan `tidak diketahui` di kolom mulai karena waktu mulai
   sebenarnya tidak pernah teramati.
 
-## 6. Firmware
+## 7. Firmware
 
 ```bash
 cp include/secrets.example.h include/secrets.h
@@ -145,7 +204,7 @@ cp include/secrets.example.h include/secrets.h
 `192.168.88.248`; jangan pakai `127.0.0.1` karena itu menunjuk ke alat itu
 sendiri.
 
-## 7. Checklist verifikasi perangkat nyata
+## 8. Checklist verifikasi perangkat nyata
 
 Bagian ini **belum dijalankan** pada saat flow selesai dibuat karena board
 belum terpasang dan `include/secrets.h` masih placeholder. Jalankan setelah
@@ -172,7 +231,7 @@ alat siap:
    berbunyi (logika di alat), dashboard menampilkan `offline`, dan riwayat
    menutup kejadian dengan `koneksi terputus`.
 
-## 8. Catatan migrasi ke VPS
+## 9. Catatan migrasi ke VPS
 
 - Ganti `MQTT_HOST`/`MQTT_PORT` di `include/secrets.h` ke alamat VPS, lalu
   flash ulang alat.
@@ -188,16 +247,17 @@ alat siap:
   keyfile  /etc/mosquitto/certs/server.key
   ```
 
-- Lindungi Node-RED dengan HTTPS dan autentikasi (reverse proxy + `adminAuth`
-  atau middleware) sebelum dashboard dapat diakses publik. Jangan ekspos port
-  1880 langsung.
+- `adminAuth` sudah aktif untuk editor dan Admin API, tetapi halaman `/ui`
+  masih terbuka. Sebelum dibuka publik, tambahkan middleware dashboard
+  (bagian 3) dan HTTPS (reverse proxy atau opsi `https` di `settings.js`).
+  Jangan ekspos port 1880 langsung.
 - Sesuaikan node broker di flow ke alamat broker baru, atau pertahankan broker
   dan Node-RED di mesin yang sama.
 - Pindahkan `flows.json` beserta `~/.node-red/context/` bila riwayat alarm
   ingin dibawa. Tanpa context, riwayat mulai kosong.
 - Ganti `allow_anonymous true` hanya untuk pengujian lokal.
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 - `/ui` 404: belum ada `ui-base` yang di-deploy, atau flow belum di-import.
 - MQTT tidak pernah terhubung: pastikan broker memakai `127.0.0.1` di node,
@@ -208,5 +268,10 @@ alat siap:
 - Form threshold kosong setelah restart: terjadi hanya jika tidak ada retained
   state dan context kosong; tunggu fallback 3 detik (default 3350/3300) atau
   sambungkan alat.
+- `401 Unauthorized` saat `curl` ke Admin API: `adminAuth` aktif. Ambil token
+  lewat `/auth/token` (bagian 4); HTTP Basic tidak didukung di Node-RED 5.0.10.
+- Lupa password editor: buat hash baru dengan `node-red admin hash-pw`, ganti
+  `password` di blok `adminAuth`, restart Node-RED. Backup konfigurasi lama ada
+  di `~/.node-red/settings.js.bak`.
 - Node-RED dijalankan manual dengan `nohup` hanya untuk pengembangan. Untuk
   operasional, jalankan sebagai service (systemd) agar otomatis restart.
