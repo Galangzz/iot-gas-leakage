@@ -217,7 +217,8 @@
         "y": 320,
         "wires": [
             [
-                "gas-text-koneksi"
+                "gas-text-koneksi",
+                "gas-pencatat"
             ]
         ],
         "z": "gas-tab-monitor"
@@ -242,8 +243,8 @@
         "id": "gas-validasi",
         "type": "function",
         "name": "validasi data",
-        "func": "const data = msg.payload\nconst statuses = ['WARMUP', 'SAFE', 'ALARM']\n\nif (!data || typeof data.avg !== 'number' || !statuses.includes(data.status)) {\n    return null\n}\n\nreturn [[msg], [msg], [msg], [msg]]",
-        "outputs": 4,
+        "func": "const data = msg.payload\nconst statuses = ['WARMUP', 'SAFE', 'ALARM']\n\nif (!data || typeof data.avg !== 'number' || !statuses.includes(data.status)) {\n    return null\n}\n\nreturn [[msg], [msg], [msg], [msg], [msg]]",
+        "outputs": 5,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -263,6 +264,9 @@
             ],
             [
                 "gas-warnai"
+            ],
+            [
+                "gas-pencatat"
             ]
         ],
         "z": "gas-tab-monitor"
@@ -746,7 +750,7 @@
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
-        "initialize": "",
+        "initialize": "flow.set('thresholdSeen', false)",
         "finalize": "",
         "libs": [],
         "x": 580,
@@ -811,6 +815,116 @@
             ],
             [
                 "gas-text-threshold"
+            ]
+        ]
+    },
+    {
+        "id": "gas-pencatat",
+        "type": "function",
+        "z": "gas-tab-monitor",
+        "name": "pencatat alarm",
+        "func": "const now = Date.now()\nlet lastStatus = flow.get('lastStatus') || null\nlet open = flow.get('openEvent') || null\nlet events = flow.get('events') || []\n\nfunction closeOpen(end, reason) {\n    if (!open) return\n    open.end = end\n    open.durationSec = Math.max(0, Math.round((end - open.start) / 1000))\n    open.endReason = reason\n    events.unshift(open)\n    if (events.length > 200) events.length = 200\n    open = null\n}\n\nif (msg.topic === 'gas/rumah1/availability') {\n    if (msg.payload === 'offline' && open) {\n        closeOpen(open.lastSeen || now, 'koneksi terputus')\n    }\n} else {\n    const status = msg.payload.status\n    const avg = msg.payload.avg\n    if (status === 'ALARM') {\n        if (!open) {\n            open = {\n                start: now,\n                lastSeen: now,\n                peak: avg,\n                startKnown: lastStatus !== null\n            }\n        }\n        open.lastSeen = now\n        open.peak = Math.max(open.peak, avg)\n    } else if (lastStatus === 'ALARM' && open) {\n        if (status === 'WARMUP') {\n            closeOpen(open.lastSeen, 'alat restart')\n        } else {\n            closeOpen(now, 'normal')\n        }\n    }\n    flow.set('lastStatus', status)\n}\n\nflow.set('openEvent', open)\nflow.set('events', events)\nmsg.payload = events\nreturn msg",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 420,
+        "wires": [
+            [
+                "gas-format-riwayat"
+            ]
+        ]
+    },
+    {
+        "id": "gas-format-riwayat",
+        "type": "function",
+        "z": "gas-tab-monitor",
+        "name": "format riwayat",
+        "func": "function fmt(t) {\n    return new Date(t).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })\n}\n\nfunction dur(sec) {\n    if (sec < 60) return `${sec} dtk`\n    return `${Math.floor(sec / 60)} mnt ${sec % 60} dtk`\n}\n\nmsg.payload = (msg.payload || []).map(e => ({\n    mulai: e.startKnown === false ? 'tidak diketahui' : fmt(e.start),\n    selesai: fmt(e.end),\n    durasi: dur(e.durationSec),\n    puncak: e.peak,\n    keterangan: e.endReason\n}))\nreturn msg",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 420,
+        "wires": [
+            [
+                "gas-table-riwayat"
+            ]
+        ]
+    },
+    {
+        "id": "gas-table-riwayat",
+        "type": "ui-table",
+        "z": "gas-tab-monitor",
+        "group": "gas-group-riwayat",
+        "order": 0,
+        "width": 12,
+        "height": 6,
+        "name": "Riwayat Alarm",
+        "label": "Riwayat Alarm",
+        "maxrows": 10,
+        "passthru": false,
+        "autocols": true,
+        "showSearch": true,
+        "deselect": true,
+        "selectionType": "none",
+        "columns": null,
+        "mobileBreakpoint": "sm",
+        "mobileBreakpointType": "defaults",
+        "action": "replace",
+        "className": "",
+        "x": 1180,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "gas-inject-riwayat",
+        "type": "inject",
+        "z": "gas-tab-monitor",
+        "name": "muat riwayat 4 dtk",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "4",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 760,
+        "y": 500,
+        "wires": [
+            [
+                "gas-muat-riwayat"
+            ]
+        ]
+    },
+    {
+        "id": "gas-muat-riwayat",
+        "type": "function",
+        "z": "gas-tab-monitor",
+        "name": "muat riwayat",
+        "func": "msg.payload = flow.get('events') || []\nreturn msg",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 990,
+        "y": 500,
+        "wires": [
+            [
+                "gas-format-riwayat"
             ]
         ]
     }
