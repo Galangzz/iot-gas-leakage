@@ -489,5 +489,329 @@
             []
         ],
         "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-input-on",
+        "type": "ui-number-input",
+        "z": "gas-tab-monitor",
+        "group": "gas-group-threshold",
+        "order": 0,
+        "width": 4,
+        "height": 1,
+        "name": "Batas Nyala (on)",
+        "label": "Batas Nyala (on)",
+        "topic": "topic",
+        "topicType": "msg",
+        "min": 0,
+        "max": 4095,
+        "step": 1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 150,
+        "y": 520,
+        "wires": [
+            [
+                "gas-simpan-on"
+            ]
+        ]
+    },
+    {
+        "id": "gas-input-off",
+        "type": "ui-number-input",
+        "z": "gas-tab-monitor",
+        "group": "gas-group-threshold",
+        "order": 1,
+        "width": 4,
+        "height": 1,
+        "name": "Batas Mati (off)",
+        "label": "Batas Mati (off)",
+        "topic": "topic",
+        "topicType": "msg",
+        "min": 0,
+        "max": 4095,
+        "step": 1,
+        "tooltip": "",
+        "delay": 300,
+        "passthru": false,
+        "sendOnDelay": false,
+        "sendOnBlur": true,
+        "sendOnEnter": true,
+        "className": "",
+        "clearable": false,
+        "icon": "",
+        "iconPosition": "left",
+        "iconInnerPosition": "inside",
+        "spinner": "default",
+        "x": 150,
+        "y": 600,
+        "wires": [
+            [
+                "gas-simpan-off"
+            ]
+        ]
+    },
+    {
+        "id": "gas-button-simpan",
+        "type": "ui-button",
+        "z": "gas-tab-monitor",
+        "group": "gas-group-threshold",
+        "order": 2,
+        "width": 4,
+        "height": 1,
+        "name": "Simpan Threshold",
+        "label": "Simpan Threshold",
+        "emulateClick": false,
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "iconPosition": "left",
+        "payload": "simpan",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "buttonColor": "",
+        "textColor": "",
+        "iconColor": "",
+        "enableClick": true,
+        "enablePointerdown": false,
+        "pointerdownPayload": "",
+        "pointerdownPayloadType": "str",
+        "enablePointerup": false,
+        "pointerupPayload": "",
+        "pointerupPayloadType": "str",
+        "x": 150,
+        "y": 680,
+        "wires": [
+            [
+                "gas-validasi-threshold"
+            ]
+        ]
+    },
+    {
+        "id": "gas-text-threshold",
+        "type": "ui-text",
+        "z": "gas-tab-monitor",
+        "group": "gas-group-threshold",
+        "order": 3,
+        "width": 12,
+        "height": 1,
+        "name": "Status Threshold",
+        "label": "Status Threshold",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "Helvetica",
+        "fontSize": 16,
+        "color": "#717171",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 700,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "gas-simpan-on",
+        "type": "function",
+        "z": "gas-tab-monitor",
+        "name": "simpan input on",
+        "func": "flow.set('inputOn', msg.payload)\nreturn null",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "gas-simpan-off",
+        "type": "function",
+        "z": "gas-tab-monitor",
+        "name": "simpan input off",
+        "func": "flow.set('inputOff', msg.payload)\nreturn null",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 600,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "gas-validasi-threshold",
+        "type": "function",
+        "z": "gas-tab-monitor",
+        "name": "validasi threshold",
+        "func": "const on = flow.get('inputOn')\nconst off = flow.get('inputOff')\nconst valid = Number.isInteger(on) && Number.isInteger(off)\n    && off >= 0 && on <= 4095 && on > off\n\nif (!valid) {\n    node.status({ fill: 'red', shape: 'ring', text: 'tidak valid' })\n    msg.payload = 'Nilai tidak valid: pastikan 0 <= off < on <= 4095'\n    msg.topic = 'threshold/error'\n    return [null, msg]\n}\n\nnode.status({ fill: 'green', shape: 'dot', text: `${on}/${off}` })\nmsg.payload = JSON.stringify({ on, off })\nmsg.topic = 'gas/rumah1/threshold/set'\nreturn [msg, { payload: 'Menunggu konfirmasi alat...' }]",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 680,
+        "wires": [
+            [
+                "gas-mqtt-out"
+            ],
+            [
+                "gas-text-threshold"
+            ]
+        ]
+    },
+    {
+        "id": "gas-mqtt-out",
+        "type": "mqtt out",
+        "z": "gas-tab-monitor",
+        "name": "Kirim Threshold",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "gas-broker",
+        "x": 680,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "gas-mqtt-threshold",
+        "type": "mqtt in",
+        "z": "gas-tab-monitor",
+        "name": "Threshold State",
+        "topic": "gas/rumah1/threshold/state",
+        "qos": "0",
+        "datatype": "utf8",
+        "broker": "gas-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 880,
+        "wires": [
+            [
+                "gas-json-threshold"
+            ]
+        ]
+    },
+    {
+        "id": "gas-json-threshold",
+        "type": "json",
+        "z": "gas-tab-monitor",
+        "name": "Parse JSON",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 380,
+        "y": 880,
+        "wires": [
+            [
+                "gas-sinkron"
+            ]
+        ]
+    },
+    {
+        "id": "gas-sinkron",
+        "type": "function",
+        "z": "gas-tab-monitor",
+        "name": "sinkron state",
+        "func": "const doc = msg.payload\n\nif (!doc || typeof doc.on !== 'number' || typeof doc.off !== 'number') {\n    return null\n}\n\nflow.set('thresholdSeen', true)\nflow.set('inputOn', doc.on)\nflow.set('inputOff', doc.off)\n\nreturn [\n    { payload: doc.on },\n    { payload: doc.off },\n    { payload: `Threshold aktif: on=${doc.on}, off=${doc.off}` }\n]",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 880,
+        "wires": [
+            [
+                "gas-input-on"
+            ],
+            [
+                "gas-input-off"
+            ],
+            [
+                "gas-text-threshold"
+            ]
+        ]
+    },
+    {
+        "id": "gas-inject-fallback",
+        "type": "inject",
+        "z": "gas-tab-monitor",
+        "name": "mulai 3 dtk",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 980,
+        "wires": [
+            [
+                "gas-fallback"
+            ]
+        ]
+    },
+    {
+        "id": "gas-fallback",
+        "type": "function",
+        "z": "gas-tab-monitor",
+        "name": "fallback threshold",
+        "func": "if (flow.get('thresholdSeen')) {\n    return null\n}\n\nflow.set('inputOn', 3350)\nflow.set('inputOff', 3300)\n\nreturn [\n    { payload: 3350 },\n    { payload: 3300 },\n    { payload: 'Belum tersinkron dengan alat' }\n]",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 980,
+        "wires": [
+            [
+                "gas-input-on"
+            ],
+            [
+                "gas-input-off"
+            ],
+            [
+                "gas-text-threshold"
+            ]
+        ]
     }
 ]
