@@ -96,23 +96,23 @@ git commit -m "chore: ignore secrets dan tambah contoh konfigurasi"
 - [ ] **Step 1: Install Mosquitto**
 
 ```bash
-sudo dnf install -y mosquitto mosquitto-clients
+sudo dnf install -y mosquitto
 ```
 
-- [ ] **Step 2: Pastikan direktori konfigurasi dimuat**
+Catatan Fedora: client (`mosquitto_pub`, `mosquitto_sub`) sudah termasuk dalam paket `mosquitto`; tidak ada paket `mosquitto-clients`.
 
-Periksa `/etc/mosquitto/mosquitto.conf`. Jika belum ada baris `include_dir /etc/mosquitto/conf.d`, tambahkan di akhir file.
+- [ ] **Step 2: Tulis konfigurasi listener**
 
-- [ ] **Step 3: Buat konfigurasi listener lokal**
+Paket Fedora menyediakan `/etc/mosquitto/mosquitto.conf` kosong dan tidak menyediakan `conf.d`. Tulis langsung:
 
-Isi `/etc/mosquitto/conf.d/gas.conf`:
-
-```
+```bash
+sudo tee -a /etc/mosquitto/mosquitto.conf >/dev/null <<'EOF'
 listener 1883 0.0.0.0
 allow_anonymous true
+EOF
 ```
 
-- [ ] **Step 4: Aktifkan service dan buka firewall**
+- [ ] **Step 3: Aktifkan service dan buka firewall**
 
 ```bash
 sudo systemctl enable --now mosquitto
@@ -120,7 +120,7 @@ sudo firewall-cmd --permanent --add-port=1883/tcp
 sudo firewall-cmd --reload
 ```
 
-- [ ] **Step 5: Verifikasi broker**
+- [ ] **Step 4: Verifikasi broker**
 
 ```bash
 ss -tln | grep ':1883'
