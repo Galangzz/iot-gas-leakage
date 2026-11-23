@@ -25,6 +25,7 @@
 - `include/secrets.h` tidak boleh masuk git.
 - PlatformIO CLI: `~/.platformio/penv/bin/pio` (tidak ada di PATH).
 - Mesin: Fedora 44, Node.js 24.16.0, Node-RED 5.0.10, firewalld aktif.
+- Repo git sudah diinisialisasi dan terhubung ke `origin` (`Galangzz/iot-gas-leakage`). Jangan jalankan `git init` lagi.
 
 ## Review Focus
 
@@ -36,7 +37,7 @@
 
 ---
 
-### Task 1: Fondasi repo dan konfigurasi rahasia
+### Task 1: Konfigurasi rahasia dan ignore
 
 **Files:**
 - Modify: `.gitignore`
@@ -45,13 +46,14 @@
 **Interfaces:**
 - Produces: makro `WIFI_SSID`, `WIFI_PASS`, `MQTT_HOST`, `MQTT_PORT` yang dipakai Task 4.
 
-- [ ] **Step 1: Inisialisasi git dan tambahkan ignore**
+- [ ] **Step 1: Tambahkan ignore untuk secrets dan credential flow**
 
 ```bash
 cd /home/galangzzz/Development/iot/gas-leakge/gas-leakage
-git init
 printf '\ninclude/secrets.h\nnode-red/flows_cred.json\n' >> .gitignore
 ```
+
+Expected: `git diff .gitignore` menampilkan dua baris baru; repo sudah punya `origin/main`, tidak perlu `git init`.
 
 - [ ] **Step 2: Buat file contoh secrets**
 
@@ -79,7 +81,7 @@ Expected: tidak ada output (file diabaikan). File `include/secrets.h` dibiarkan 
 
 ```bash
 git add .gitignore include/secrets.example.h
-git commit -m "chore: init repo dan contoh konfigurasi secrets"
+git commit -m "chore: ignore secrets dan tambah contoh konfigurasi"
 ```
 
 ---
