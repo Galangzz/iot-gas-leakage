@@ -1,0 +1,493 @@
+[
+    {
+        "id": "gas-tab-monitor",
+        "type": "tab",
+        "label": "Gas Monitor",
+        "disabled": false,
+        "info": "Dashboard monitoring kebocoran gas MQ-5.\n\nTopik MQTT:\n- gas/rumah1/data\n- gas/rumah1/availability\n- gas/rumah1/threshold/state\n- gas/rumah1/threshold/set"
+    },
+    {
+        "id": "gas-ui-base",
+        "type": "ui-base",
+        "name": "Gas Dashboard",
+        "path": "/ui",
+        "appIcon": "",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false,
+        "headerContent": "page",
+        "navigationStyle": "default",
+        "titleBarStyle": "default",
+        "showReconnectNotification": true,
+        "notificationDisplayTime": 1,
+        "showDisconnectNotification": true,
+        "allowInstall": false
+    },
+    {
+        "id": "default",
+        "type": "ui-theme",
+        "name": "Default",
+        "colors": {
+            "surface": "#fcfcfd",
+            "primary": "#0d74ce",
+            "bgPage": "#f9f9fb",
+            "groupBg": "#ffffff",
+            "groupOutline": "#d9d9e0"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "gas-page-monitor",
+        "type": "ui-page",
+        "name": "Monitor Gas",
+        "ui": "gas-ui-base",
+        "path": "/monitor",
+        "icon": "home",
+        "layout": "grid",
+        "layoutType": "layout",
+        "theme": "default",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": 0,
+                "cols": 3
+            },
+            {
+                "name": "Tablet",
+                "px": 576,
+                "cols": 6
+            },
+            {
+                "name": "Small Desktop",
+                "px": 768,
+                "cols": 9
+            },
+            {
+                "name": "Desktop",
+                "px": 1024,
+                "cols": 12
+            }
+        ],
+        "tabs": [],
+        "order": 0,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "gas-group-status",
+        "type": "ui-group",
+        "name": "Status",
+        "page": "gas-page-monitor",
+        "width": 12,
+        "height": 1,
+        "order": 0,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default",
+        "keepLoaded": false,
+        "tab": ""
+    },
+    {
+        "id": "gas-group-grafik",
+        "type": "ui-group",
+        "name": "Grafik",
+        "page": "gas-page-monitor",
+        "width": 12,
+        "height": 1,
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default",
+        "keepLoaded": false,
+        "tab": ""
+    },
+    {
+        "id": "gas-group-threshold",
+        "type": "ui-group",
+        "name": "Threshold",
+        "page": "gas-page-monitor",
+        "width": 12,
+        "height": 1,
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default",
+        "keepLoaded": false,
+        "tab": ""
+    },
+    {
+        "id": "gas-group-riwayat",
+        "type": "ui-group",
+        "name": "Riwayat Alarm",
+        "page": "gas-page-monitor",
+        "width": 12,
+        "height": 1,
+        "order": 3,
+        "showTitle": true,
+        "className": "",
+        "visible": true,
+        "disabled": false,
+        "groupType": "default",
+        "keepLoaded": false,
+        "tab": ""
+    },
+    {
+        "id": "gas-broker",
+        "type": "mqtt-broker",
+        "name": "Mosquitto Lokal",
+        "broker": "127.0.0.1",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "verifyservercert": false,
+        "compatmode": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": 0
+    },
+    {
+        "id": "gas-mqtt-data",
+        "type": "mqtt in",
+        "name": "Data Gas",
+        "topic": "gas/rumah1/data",
+        "qos": "0",
+        "datatype": "utf8",
+        "broker": "gas-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 150,
+        "y": 120,
+        "wires": [
+            [
+                "gas-json"
+            ]
+        ],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-mqtt-avail",
+        "type": "mqtt in",
+        "name": "Availability",
+        "topic": "gas/rumah1/availability",
+        "qos": "0",
+        "datatype": "utf8",
+        "broker": "gas-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 150,
+        "y": 320,
+        "wires": [
+            [
+                "gas-text-koneksi"
+            ]
+        ],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-json",
+        "type": "json",
+        "name": "Parse JSON",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 350,
+        "y": 120,
+        "wires": [
+            [
+                "gas-validasi"
+            ]
+        ],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-validasi",
+        "type": "function",
+        "name": "validasi data",
+        "func": "const data = msg.payload\nconst statuses = ['WARMUP', 'SAFE', 'ALARM']\n\nif (!data || typeof data.avg !== 'number' || !statuses.includes(data.status)) {\n    return null\n}\n\nreturn [[msg], [msg], [msg], [msg]]",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 120,
+        "wires": [
+            [
+                "gas-gauge"
+            ],
+            [
+                "gas-text-raw"
+            ],
+            [
+                "gas-chart"
+            ],
+            [
+                "gas-warnai"
+            ]
+        ],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-warnai",
+        "type": "function",
+        "name": "warnai status",
+        "func": "msg.ui_update = { class: 'status-' + String(msg.payload.status).toLowerCase() }\nmsg.payload = msg.payload.status\nreturn msg",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 220,
+        "wires": [
+            [
+                "gas-text-status"
+            ]
+        ],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-text-status",
+        "type": "ui-text",
+        "group": "gas-group-status",
+        "order": 0,
+        "width": 4,
+        "height": 1,
+        "name": "Status Gas",
+        "label": "Status Gas",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "Helvetica",
+        "fontSize": 16,
+        "color": "#717171",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 970,
+        "y": 220,
+        "wires": [],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-text-raw",
+        "type": "ui-text",
+        "group": "gas-group-status",
+        "order": 1,
+        "width": 4,
+        "height": 1,
+        "name": "Nilai Mentah",
+        "label": "Nilai Mentah (raw)",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "Helvetica",
+        "fontSize": 16,
+        "color": "#717171",
+        "wrapText": false,
+        "className": "",
+        "value": "payload.raw",
+        "valueType": "msg",
+        "x": 770,
+        "y": 120,
+        "wires": [],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-text-koneksi",
+        "type": "ui-text",
+        "group": "gas-group-status",
+        "order": 2,
+        "width": 4,
+        "height": 1,
+        "name": "Koneksi Alat",
+        "label": "Koneksi Alat",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "style": false,
+        "font": "Helvetica",
+        "fontSize": 16,
+        "color": "#717171",
+        "wrapText": false,
+        "className": "",
+        "value": "payload",
+        "valueType": "msg",
+        "x": 430,
+        "y": 320,
+        "wires": [],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-gauge",
+        "type": "ui-gauge",
+        "group": "gas-group-status",
+        "order": 3,
+        "width": 6,
+        "height": 4,
+        "name": "Nilai Gas",
+        "value": "payload.avg",
+        "valueType": "msg",
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Nilai Gas (avg)",
+        "alwaysShowTitle": false,
+        "floatingTitlePosition": "top-left",
+        "units": "ADC",
+        "icon": "",
+        "prefix": "",
+        "suffix": "",
+        "segments": [
+            {
+                "color": "#5CD65C",
+                "from": 0
+            },
+            {
+                "color": "#FFC800",
+                "from": 2500
+            },
+            {
+                "color": "#EA5353",
+                "from": 3350
+            }
+        ],
+        "min": 0,
+        "max": 4095,
+        "sizeThickness": 16,
+        "sizeGap": 4,
+        "sizeKeyThickness": 8,
+        "styleRounded": true,
+        "styleGlow": false,
+        "className": "",
+        "x": 770,
+        "y": 20,
+        "wires": [],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-chart",
+        "type": "ui-chart",
+        "group": "gas-group-grafik",
+        "order": 0,
+        "width": 12,
+        "height": 8,
+        "name": "Riwayat Nilai Gas",
+        "label": "Riwayat Nilai Gas",
+        "chartType": "line",
+        "category": "topic",
+        "categoryType": "msg",
+        "xAxisLabel": "Waktu",
+        "xAxisProperty": null,
+        "xAxisPropertyType": "timestamp",
+        "xAxisType": "time",
+        "xAxisFormat": "",
+        "xAxisFormatType": "auto",
+        "xmin": "",
+        "xmax": "",
+        "yAxisLabel": "ADC",
+        "yAxisProperty": "payload.avg",
+        "yAxisPropertyType": "msg",
+        "ymin": "0",
+        "ymax": "4095",
+        "bins": 10,
+        "action": "append",
+        "stackSeries": false,
+        "pointShape": "circle",
+        "pointRadius": 4,
+        "showLegend": true,
+        "removeOlder": 15,
+        "removeOlderUnit": "60",
+        "removeOlderPoints": "900",
+        "colors": [
+            "#0095FF",
+            "#FF0000",
+            "#FF7F0E",
+            "#2CA02C",
+            "#A347E1",
+            "#D62728",
+            "#FF9896",
+            "#9467BD",
+            "#C5B0D5"
+        ],
+        "textColor": [
+            "#666666"
+        ],
+        "textColorDefault": true,
+        "gridColor": [
+            "#e5e5e5"
+        ],
+        "gridColorDefault": true,
+        "className": "",
+        "interpolation": "linear",
+        "x": 970,
+        "y": 20,
+        "wires": [],
+        "z": "gas-tab-monitor"
+    },
+    {
+        "id": "gas-css",
+        "type": "ui-template",
+        "name": "CSS status",
+        "group": "",
+        "page": "",
+        "ui": "gas-ui-base",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "head": "",
+        "format": ".status-safe .nrdb-ui-text-value { color: #2e7d32 !important; font-weight: 700; }\n.status-alarm .nrdb-ui-text-value { color: #c62828 !important; font-weight: 700; }\n.status-warmup .nrdb-ui-text-value { color: #f9a825 !important; font-weight: 700; }",
+        "noerr": 0,
+        "storeOutMessages": true,
+        "passthru": true,
+        "resendOnRefresh": true,
+        "templateScope": "site:style",
+        "className": "",
+        "x": 970,
+        "y": 320,
+        "wires": [
+            []
+        ],
+        "z": "gas-tab-monitor"
+    }
+]
