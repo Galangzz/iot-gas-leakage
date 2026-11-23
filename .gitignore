@@ -5,3 +5,6 @@
 .vscode/ipch
 
 .superpowers
+
+include/secrets.h
+node-red/flows_cred.json
